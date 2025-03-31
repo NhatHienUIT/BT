@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Vẽ Đường Cong WebGL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .canvas-container {
+            border: 1px solid #ccc;
+            background-color: white;
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .tab {
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 0 5px 5px 5px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, button {
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .control-points {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .point-control {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .point-control input {
+            width: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ứng dụng Vẽ Đường Cong WebGL</h1>
+        
+        <div class="canvas-container">
+            <canvas id="glCanvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div class="tabs">
+                <div class="tab active" data-tab="function">Đồ Thị Hàm Số</div>
+                <div class="tab" data-tab="bezier">Đường Cong Bezier</div>
+                <div class="tab" data-tab="hermite">Đường Cong Hermite</div>
+                <div class="tab" data-tab="flower">Hoa N Cánh</div>
+            </div>
+            
+            <div class="tab-content active" id="function-tab">
+                <div class="form-group">
+                    <label for="function-expr">Hàm số f(x):</label>
+                    <input type="text" id="function-expr" value="Math.sin(x)" placeholder="Ví dụ: Math.sin(x)">
+                </div>
+                <div class="form-group">
+                    <label for="x-min">Giá trị x tối thiểu:</label>
+                    <input type="number" id="x-min" value="-5" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label for="x-max">Giá trị x tối đa:</label>
+                    <input type="number" id="x-max" value="5" step="0.5">
+                </div>
+                <button id="draw-function">Vẽ Đồ Thị</button>
+            </div>
+            
+            <div class="tab-content" id="bezier-tab">
+                <div class="form-group">
+                    <label>Các điểm điều khiển:</label>
+                    <div class="control-points" id="bezier-points">
+                        <div class="point-control">
+                            <span>P0:</span>
+                            <input type="number" class="point-x" value="-0.8" step="0.1">
+                            <input type="number" class="point-y" value="-0.8" step="0.1">
+                        </div>
+                        <div class="point-control">
+                            <span>P1:</span>
+                            <input type="number" class="point-x" value="-0.5" step="0.1">
+                            <input type="number" class="point-y" value="0.8" step="0.1">
+                        </div>
+                        <div class="point-control">
+                            <span>P2:</span>
+                            <input type="number" class="point-x" value="0.5" step="0.1">
+                            <input type="number" class="point-y" value="-0.8" step="0.1">
+                        </div>
+                        <div class="point-control">
+                            <span>P3:</span>
+                            <input type="number" class="point-x" value="0.8" step="0.1">
+                            <input type="number" class="point-y" value="0.8" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button id="add-bezier-point">Thêm Điểm</button>
+                </div>
+                <button id="draw-bezier">Vẽ Đường Cong Bezier</button>
+            </div>
+            
+            <div class="tab-content" id="hermite-tab">
+                <div class="form-group">
+                    <label>Điểm bắt đầu P0:</label>
+                    <div class="point-control">
+                        <input type="number" id="hermite-p0-x" value="-0.8" step="0.1">
+                        <input type="number" id="hermite-p0-y" value="-0.5" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Vector tiếp tuyến tại P0:</label>
+                    <div class="point-control">
+                        <input type="number" id="hermite-v0-x" value="0.5" step="0.1">
+                        <input type="number" id="hermite-v0-y" value="1.0" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Điểm kết thúc P1:</label>
+                    <div class="point-control">
+                        <input type="number" id="hermite-p1-x" value="0.8" step="0.1">
+                        <input type="number" id="hermite-p1-y" value="0.5" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Vector tiếp tuyến tại P1:</label>
+                    <div class="point-control">
+                        <input type="number" id="hermite-v1-x" value="-0.5" step="0.1">
+                        <input type="number" id="hermite-v1-y" value="1.0" step="0.1">
+                    </div>
+                </div>
+                <button id="draw-hermite">Vẽ Đường Cong Hermite</button>
+            </div>
+            
+            <div class="tab-content" id="flower-tab">
+                <div class="form-group">
+                    <label for="petal-count">Số cánh hoa (n):</label>
+                    <input type="number" id="petal-count" value="5" min="1" max="20" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="t-steps">Số bước vẽ:</label>
+                    <input type="number" id="t-steps" value="500" min="100" max="2000" step="100">
+                </div>
+                <button id="draw-flower">Vẽ Hoa N Cánh</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vertex Shader -->
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        
+        void main() {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+            gl_PointSize = 5.0;
+        }
+    </script>
+    
+    <!-- Fragment Shader -->
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+        
+        uniform vec4 u_color;
+        
+        void main() {
+            gl_FragColor = u_color;
+        }
+    </script>
+
+    <!-- Link to the external script file -->
+    <script src="curves.js"></script>
+</body>
+</html>
